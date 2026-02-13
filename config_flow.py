@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
@@ -55,7 +55,7 @@ class EleringEstoniaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         CONF_PRICE_IN_CENTS,
                         default=DEFAULT_PRICE_IN_CENTS,
-                    ): bool,
+                    ): cv.boolean,
                     vol.Optional(
                         CONF_ADDITIONAL_COSTS,
                         default=DEFAULT_ADDITIONAL_COSTS,
@@ -110,7 +110,7 @@ class EleringEstoniaOptionsFlow(config_entries.OptionsFlow):
                                 CONF_PRICE_IN_CENTS, DEFAULT_PRICE_IN_CENTS
                             ),
                         ),
-                    ): bool,
+                    ): cv.boolean,
                     vol.Optional(
                         CONF_ADDITIONAL_COSTS,
                         default=self.config_entry.options.get(
