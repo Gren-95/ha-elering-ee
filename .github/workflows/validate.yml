@@ -1,0 +1,61 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install homeassistant
+          pip install -r requirements_test.txt || echo "No test requirements"
+
+      - name: Check manifest.json
+        run: |
+          python -c "import json; json.load(open('manifest.json'))"
+          echo "✓ manifest.json is valid JSON"
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile *.py
+          echo "✓ Python syntax is valid"
+
+      - name: Check for common issues
+        run: |
+          # Check domain in manifest matches const.py
+          MANIFEST_DOMAIN=$(python -c "import json; print(json.load(open('manifest.json'))['domain'])")
+          CONST_DOMAIN=$(python -c "exec(open('const.py').read()); print(DOMAIN)")
+          if [ "$MANIFEST_DOMAIN" != "$CONST_DOMAIN" ]; then
+            echo "❌ Domain mismatch: manifest.json has '$MANIFEST_DOMAIN' but const.py has '$CONST_DOMAIN'"
+            exit 1
+          fi
+          echo "✓ Domain is consistent across files"
+
+  hacs:
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
