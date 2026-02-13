@@ -126,15 +126,11 @@ class EstonianElectricityPriceSensor(SensorEntity):
         try:
             async with async_timeout.timeout(10):
                 async with aiohttp.ClientSession() as session:
-                    # Get data for yesterday, today and tomorrow
+                    # Get current time for filtering
                     current_time = datetime.now()
-                    yesterday = current_time - timedelta(days=1)
-                    tomorrow = current_time + timedelta(days=1)
 
-                    start_date = yesterday.strftime("%Y-%m-%d")
-                    end_date = tomorrow.strftime("%Y-%m-%d")
-
-                    url = f"{ELERING_API_URL}?start={start_date}&end={end_date}"
+                    # Elering API returns current day data without parameters
+                    url = ELERING_API_URL
 
                     async with session.get(url) as response:
                         if response.status != 200:
@@ -158,35 +154,53 @@ class EstonianElectricityPriceSensor(SensorEntity):
                             self._available = False
                             return
 
-                        # Process prices
+                        # Process prices - API returns 15-minute intervals
                         current_price_raw = None
                         prices_today = []
                         prices_tomorrow = []
                         self._raw_today = []
                         self._raw_tomorrow = []
 
+                        # Group prices by hour (API gives 15-min intervals)
+                        hourly_prices = {}
+                        tomorrow_date = current_time.date() + timedelta(days=1)
+
                         for price_entry in ee_prices:
                             timestamp = datetime.fromtimestamp(price_entry["timestamp"])
                             price_raw = price_entry["price"]
-                            price_converted = self._convert_price(price_raw)
+
+                            # Create hour key
+                            hour_key = (timestamp.date(), timestamp.hour)
+
+                            if hour_key not in hourly_prices:
+                                hourly_prices[hour_key] = []
+                            hourly_prices[hour_key].append(price_raw)
+
+                        # Convert to hourly averages
+                        for (date, hour), prices in sorted(hourly_prices.items()):
+                            # Average the 15-minute intervals for this hour
+                            avg_price_raw = sum(prices) / len(prices)
+                            price_converted = self._convert_price(avg_price_raw)
+
+                            # Create timestamp for this hour
+                            hour_time = datetime(date.year, date.month, date.day, hour, 0)
 
                             # Current hour price
-                            if (timestamp.date() == current_time.date() and
-                                timestamp.hour == current_time.hour):
-                                current_price_raw = price_raw
+                            if date == current_time.date() and hour == current_time.hour:
+                                current_price_raw = avg_price_raw
 
                             # Today's prices
-                            if timestamp.date() == current_time.date():
-                                self._raw_today.append(price_raw)
+                            if date == current_time.date():
+                                self._raw_today.append(avg_price_raw)
                                 prices_today.append({
-                                    "time": timestamp.strftime("%H:%M"),
+                                    "time": hour_time.strftime("%H:%M"),
                                     "price": price_converted,
                                 })
                             # Tomorrow's prices
-                            elif timestamp.date() == tomorrow.date():
-                                self._raw_tomorrow.append(price_raw)
+                            elif date == tomorrow_date:
+                                self._raw_tomorrow.append(avg_price_raw)
                                 prices_tomorrow.append({
-                                    "time": timestamp.strftime("%H:%M"),
+                                    "time": hour_time.strftime("%H:%M"),
                                     "price": price_converted,
                                 })
 
