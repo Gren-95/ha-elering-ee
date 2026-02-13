@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Elering Estonia Electricity Price",
+        "description": "Set up your electricity price sensor with VAT and network fees",
+        "data": {
+          "vat": "VAT Rate (0.22 = 22%)",
+          "price_in_cents": "Show price in cents/kWh",
+          "additional_costs": "Additional costs (EUR/MWh, e.g. network fees)",
+          "precision": "Decimal precision (0-6)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Elering API",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This integration is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Configuration",
+        "description": "Update your electricity price sensor settings",
+        "data": {
+          "vat": "VAT Rate (0.22 = 22%)",
+          "price_in_cents": "Show price in cents/kWh",
+          "additional_costs": "Additional costs (EUR/MWh, e.g. network fees)",
+          "precision": "Decimal precision (0-6)"
+        }
+      }
+    }
+  }
+}

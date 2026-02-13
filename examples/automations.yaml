@@ -1,0 +1,182 @@
+# Example Automations for Elering Estonia Integration
+
+# ============================================
+# Notify When Electricity Becomes Cheap
+# ============================================
+- alias: "Electricity - Cheap Alert"
+  description: "Send notification when electricity price drops below average"
+  trigger:
+    - platform: state
+      entity_id: sensor.elering_ee_electricity_price
+      attribute: is_cheap
+      to: true
+  action:
+    - service: notify.notify
+      data:
+        title: "⚡ Electricity is Cheap!"
+        message: >
+          Current price: {{ states('sensor.elering_ee_electricity_price') }} c/kWh
+          ({{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}% of average)
+
+          Good time to run appliances!
+
+# ============================================
+# Run Appliances During Cheapest Hours
+# ============================================
+- alias: "Electricity - Run Dishwasher in Cheap Hours"
+  description: "Automatically turn on dishwasher during cheapest hours"
+  trigger:
+    - platform: time_pattern
+      hours: "*"
+  condition:
+    - condition: template
+      value_template: >
+        {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank').split('/')[0]|int <= 5 }}
+    - condition: state
+      entity_id: input_boolean.dishwasher_ready
+      state: "on"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.dishwasher
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.dishwasher_ready
+
+# ============================================
+# EV Charging - Only During Cheap Night Hours
+# ============================================
+- alias: "Electricity - EV Charge When Cheap"
+  description: "Charge EV only during cheap night hours"
+  trigger:
+    - platform: time_pattern
+      hours: "*"
+  condition:
+    - condition: time
+      after: "22:00"
+      before: "06:00"
+    - condition: numeric_state
+      entity_id: sensor.elering_ee_electricity_price
+      below: 10  # Below 10 c/kWh
+    - condition: numeric_state
+      entity_id: sensor.ev_battery
+      below: 80  # Only if battery below 80%
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.ev_charger
+
+- alias: "Electricity - EV Stop Charging When Expensive"
+  description: "Stop EV charging if price becomes too high"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.elering_ee_electricity_price
+      above: 15  # Above 15 c/kWh
+  condition:
+    - condition: state
+      entity_id: switch.ev_charger
+      state: "on"
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.ev_charger
+    - service: notify.notify
+      data:
+        message: "EV charging paused - electricity too expensive ({{ states('sensor.elering_ee_electricity_price') }} c/kWh)"
+
+# ============================================
+# Daily Price Summary Notification
+# ============================================
+- alias: "Electricity - Morning Price Summary"
+  description: "Send daily electricity price summary"
+  trigger:
+    - platform: time
+      at: "07:00"
+  action:
+    - service: notify.notify
+      data:
+        title: "📊 Today's Electricity Prices"
+        message: >
+          Average: {{ state_attr('sensor.elering_ee_electricity_price', 'average') }} c/kWh
+          Min: {{ state_attr('sensor.elering_ee_electricity_price', 'min') }} c/kWh
+          Max: {{ state_attr('sensor.elering_ee_electricity_price', 'max') }} c/kWh
+
+          Peak hours avg: {{ state_attr('sensor.elering_ee_electricity_price', 'peak_average') }} c/kWh
+          Off-peak avg: {{ state_attr('sensor.elering_ee_electricity_price', 'off_peak_average') }} c/kWh
+
+# ============================================
+# Water Heater Control Based on Price
+# ============================================
+- alias: "Electricity - Water Heater During Cheap Hours"
+  description: "Heat water only during cheapest hours"
+  trigger:
+    - platform: time_pattern
+      hours: "*"
+  condition:
+    - condition: template
+      value_template: >
+        {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank').split('/')[0]|int <= 6 }}
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.water_heater
+
+- alias: "Electricity - Water Heater Turn Off"
+  description: "Turn off water heater when not in cheap hours"
+  trigger:
+    - platform: time_pattern
+      hours: "*"
+  condition:
+    - condition: template
+      value_template: >
+        {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank').split('/')[0]|int > 6 }}
+    - condition: numeric_state
+      entity_id: sensor.water_heater_temperature
+      above: 50  # Only turn off if water is warm enough
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.water_heater
+
+# ============================================
+# Warning When Price Extremely High
+# ============================================
+- alias: "Electricity - Extreme Price Warning"
+  description: "Alert when electricity price is extremely high"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.elering_ee_electricity_price
+      above: 18  # Above 18 c/kWh
+  action:
+    - service: notify.notify
+      data:
+        title: "⚠️ Electricity Price VERY HIGH!"
+        message: >
+          Current price: {{ states('sensor.elering_ee_electricity_price') }} c/kWh
+
+          This is {{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}% of today's average.
+
+          Avoid using high-power appliances!
+        data:
+          priority: high
+
+# ============================================
+# Tomorrow's Prices Available
+# ============================================
+- alias: "Electricity - Tomorrow Prices Available"
+  description: "Notify when tomorrow's prices become available"
+  trigger:
+    - platform: state
+      entity_id: sensor.elering_ee_electricity_price
+      attribute: tomorrow_valid
+      to: true
+  action:
+    - service: notify.notify
+      data:
+        title: "📅 Tomorrow's Electricity Prices"
+        message: >
+          Tomorrow's prices are now available!
+
+          Average: {{ state_attr('sensor.elering_ee_electricity_price', 'average_tomorrow') }} c/kWh
+          Min: {{ state_attr('sensor.elering_ee_electricity_price', 'min_tomorrow') }} c/kWh
+          Max: {{ state_attr('sensor.elering_ee_electricity_price', 'max_tomorrow') }} c/kWh
