@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-02-13
+
+### Fixed
+- Sensor showing "unavailable" status
+- Removed invalid API URL parameters (start/end) that caused 400 errors
+- Properly handle 15-minute price intervals from Elering API
+- Average 15-minute intervals to provide clean hourly prices
+- Fixed tomorrow date calculation for next day prices
+
+### Changed
+- Simplified API call to use endpoint without parameters
+- Improved price aggregation logic for better accuracy
+
 ## [2.0.2] - 2026-02-13
 
 ### Added
