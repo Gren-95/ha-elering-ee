@@ -72,10 +72,8 @@ class EstonianElectricityPriceSensor(SensorEntity):
         self._precision = self._get_config(CONF_PRECISION, DEFAULT_PRECISION)
 
         # Set unit based on configuration
-        if self._price_in_cents:
-            self._attr_native_unit_of_measurement = "c/kWh"
-        else:
-            self._attr_native_unit_of_measurement = "€/MWh"
+        # Energy dashboard requires EUR/kWh format
+        self._attr_native_unit_of_measurement = "EUR/kWh"
 
         # State variables
         self._state = None
@@ -91,19 +89,17 @@ class EstonianElectricityPriceSensor(SensorEntity):
         return self._entry.data.get(key, default)
 
     def _convert_price(self, price_eur_mwh: float) -> float:
-        """Convert price from EUR/MWh to configured unit with VAT and additional costs."""
+        """Convert price from EUR/MWh to EUR/kWh with VAT and additional costs."""
         # Add VAT
         price_with_vat = price_eur_mwh * (1 + self._vat)
 
         # Add additional costs (assumed to be in EUR/MWh)
         price_total = price_with_vat + self._additional_costs
 
-        # Convert to cents/kWh if configured
-        if self._price_in_cents:
-            # EUR/MWh to cents/kWh: divide by 10
-            price_total = price_total / 10
+        # Convert EUR/MWh to EUR/kWh (divide by 1000)
+        price_eur_kwh = price_total / 1000
 
-        return round(price_total, self._precision)
+        return round(price_eur_kwh, self._precision)
 
     @property
     def native_value(self) -> float | None:
