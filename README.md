@@ -1,6 +1,16 @@
-# Elering Estonia Electricity Price Sensor for Home Assistant
+<div align="center">
+  <img src="logo.png" alt="Elering Estonia Logo" width="200"/>
 
-A comprehensive Home Assistant integration for Estonian electricity prices using real-time data from the Elering API (Nord Pool spot prices).
+  # Elering Estonia Electricity Price
+
+  [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+  [![GitHub Release](https://img.shields.io/github/release/Gren-95/ha-elering-ee.svg)](https://github.com/Gren-95/ha-elering-ee/releases)
+  [![License](https://img.shields.io/github/license/Gren-95/ha-elering-ee.svg)](LICENSE)
+
+  A comprehensive Home Assistant integration for Estonian electricity prices using real-time data from the Elering API (Nord Pool spot prices).
+</div>
+
+---
 
 ## Features
 
