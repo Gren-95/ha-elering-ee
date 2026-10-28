@@ -4,7 +4,7 @@
 # Simple Current Price Card
 # ============================================
 type: entity
-entity: sensor.elering_ee_electricity_price
+entity: sensor.electricity_price
 name: Electricity Price
 icon: mdi:flash
 
@@ -14,51 +14,51 @@ icon: mdi:flash
 # Detailed Statistics Card
 # ============================================
 type: entities
-title: ⚡ Electricity Prices
+title: Electricity prices
 entities:
-  - entity: sensor.elering_ee_electricity_price
+  - entity: sensor.electricity_price
     name: Current Price
     icon: mdi:flash
   - type: divider
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: is_cheap
     name: Is Cheap?
     icon: mdi:tag
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: price_rank
     name: Price Rank
     icon: mdi:podium
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: price_percent_to_average
     name: vs Average
     suffix: "%"
   - type: divider
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: average
     name: Average Today
     suffix: c/kWh
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: min
     name: Min Today
     suffix: c/kWh
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: max
     name: Max Today
     suffix: c/kWh
   - type: divider
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: peak_average
     name: Peak Average (7-23)
     suffix: c/kWh
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: off_peak_average
     name: Off-Peak Average (23-7)
     suffix: c/kWh
@@ -69,7 +69,7 @@ entities:
 # Gauge Card - Visual Price Indicator
 # ============================================
 type: gauge
-entity: sensor.elering_ee_electricity_price
+entity: sensor.electricity_price
 name: Current Electricity Price
 min: 0
 max: 20
@@ -90,24 +90,24 @@ segments:
 # ============================================
 type: markdown
 content: |
-  ## ⚡ Electricity Price Summary
+  ## Electricity price summary
 
-  **Current Price:** {{ states('sensor.elering_ee_electricity_price') }} c/kWh
-  {% if state_attr('sensor.elering_ee_electricity_price', 'is_cheap') %}
-  🟢 **Status:** CHEAP - Good time to use electricity!
+  **Current Price:** {{ states('sensor.electricity_price') }} c/kWh
+  {% if state_attr('sensor.electricity_price', 'is_cheap') %}
+  **Status:** cheap, a good time to run appliances
   {% else %}
-  🔴 **Status:** EXPENSIVE - Consider waiting
+  **Status:** expensive, consider waiting
   {% endif %}
 
-  **Price Rank:** {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank') }}
-  **vs Average:** {{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}%
+  **Price Rank:** {{ state_attr('sensor.electricity_price', 'price_rank') }}
+  **vs Average:** {{ state_attr('sensor.electricity_price', 'price_percent_to_average') }}%
 
   ---
 
   **Today's Stats:**
-  - Min: {{ state_attr('sensor.elering_ee_electricity_price', 'min') }} c/kWh
-  - Avg: {{ state_attr('sensor.elering_ee_electricity_price', 'average') }} c/kWh
-  - Max: {{ state_attr('sensor.elering_ee_electricity_price', 'max') }} c/kWh
+  - Min: {{ state_attr('sensor.electricity_price', 'min') }} c/kWh
+  - Avg: {{ state_attr('sensor.electricity_price', 'average') }} c/kWh
+  - Max: {{ state_attr('sensor.electricity_price', 'max') }} c/kWh
 
 ---
 
@@ -117,13 +117,13 @@ content: |
 type: conditional
 conditions:
   - condition: template
-    value_template: "{{ not state_attr('sensor.elering_ee_electricity_price', 'is_cheap') }}"
+    value_template: "{{ not state_attr('sensor.electricity_price', 'is_cheap') }}"
 card:
   type: markdown
   content: |
-    ⚠️ **Electricity is expensive right now!**
+    **Electricity is expensive right now**
 
-    Current: {{ states('sensor.elering_ee_electricity_price') }} c/kWh
-    ({{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}% of average)
+    Current: {{ states('sensor.electricity_price') }} c/kWh
+    ({{ state_attr('sensor.electricity_price', 'price_percent_to_average') }}% of average)
 
     Consider delaying high-consumption activities.

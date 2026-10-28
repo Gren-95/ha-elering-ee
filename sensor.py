@@ -12,12 +12,12 @@ import async_timeout
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
-    SensorDeviceClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
+import homeassistant.util.dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -38,6 +38,20 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=SCAN_INTERVAL_MINUTES)
+
+# Nord Pool's delivery day runs on CET, so the first hour of tomorrow in
+# Estonia is known a day early. Tomorrow only counts once it is (nearly) whole;
+# 23 allows for the short day when the clocks go forward.
+MIN_HOURS_FOR_FULL_DAY = 23
+
+
+def _api_time(moment: datetime) -> str:
+    """Format a time for the Elering API: UTC with a Z suffix.
+
+    An isoformat() offset like +00:00 is not URL-safe: the + arrives as a
+    space and the API answers 400.
+    """
+    return dt_util.as_utc(moment).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=MIN_UPDATE_INTERVAL_MINUTES)
 
 
@@ -55,7 +69,8 @@ class EstonianElectricityPriceSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Electricity Price"
-    _attr_device_class = SensorDeviceClass.MONETARY
+    # No device class: monetary is for amounts of money and only allows the
+    # 'total' state class. A price per kWh is a measurement.
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:flash"
     _unrecorded_attributes = UNRECORDED_ATTRIBUTES
@@ -71,9 +86,9 @@ class EstonianElectricityPriceSensor(SensorEntity):
         self._additional_costs = self._get_config(CONF_ADDITIONAL_COSTS, DEFAULT_ADDITIONAL_COSTS)
         self._precision = self._get_config(CONF_PRECISION, DEFAULT_PRECISION)
 
-        # Set unit based on configuration
-        # Energy dashboard requires EUR/kWh format
-        self._attr_native_unit_of_measurement = "EUR/kWh"
+        # Set unit based on configuration. The Energy dashboard only accepts
+        # EUR/kWh, so turn cents off to use the sensor there.
+        self._attr_native_unit_of_measurement = "c/kWh" if self._price_in_cents else "EUR/kWh"
 
         # State variables
         self._state = None
@@ -89,17 +104,18 @@ class EstonianElectricityPriceSensor(SensorEntity):
         return self._entry.data.get(key, default)
 
     def _convert_price(self, price_eur_mwh: float) -> float:
-        """Convert price from EUR/MWh to EUR/kWh with VAT and additional costs."""
+        """Convert price from EUR/MWh to EUR/kWh or c/kWh with VAT and additional costs."""
         # Add VAT
         price_with_vat = price_eur_mwh * (1 + self._vat)
 
         # Add additional costs (assumed to be in EUR/MWh)
         price_total = price_with_vat + self._additional_costs
 
-        # Convert EUR/MWh to EUR/kWh (divide by 1000)
+        # Convert EUR/MWh to EUR/kWh (divide by 1000), then to cents if asked
         price_eur_kwh = price_total / 1000
+        price = price_eur_kwh * 100 if self._price_in_cents else price_eur_kwh
 
-        return round(price_eur_kwh, self._precision)
+        return round(price, self._precision)
 
     @property
     def native_value(self) -> float | None:
@@ -122,11 +138,17 @@ class EstonianElectricityPriceSensor(SensorEntity):
         try:
             async with async_timeout.timeout(10):
                 async with aiohttp.ClientSession() as session:
-                    # Get current time for filtering
-                    current_time = datetime.now()
+                    # Get current time for filtering, in Home Assistant's time zone
+                    current_time = dt_util.now()
 
-                    # Elering API returns current day data without parameters
-                    url = ELERING_API_URL
+                    # Without a range the API only returns the last ~12 hours,
+                    # so ask for the whole of today and tomorrow.
+                    start = dt_util.start_of_local_day(current_time)
+                    end = dt_util.start_of_local_day(start + timedelta(days=2, hours=1))
+                    url = (
+                        f"{ELERING_API_URL}?start={_api_time(start)}"
+                        f"&end={_api_time(end - timedelta(milliseconds=1))}"
+                    )
 
                     async with session.get(url) as response:
                         if response.status != 200:
@@ -162,7 +184,9 @@ class EstonianElectricityPriceSensor(SensorEntity):
                         tomorrow_date = current_time.date() + timedelta(days=1)
 
                         for price_entry in ee_prices:
-                            timestamp = datetime.fromtimestamp(price_entry["timestamp"])
+                            timestamp = dt_util.as_local(
+                                dt_util.utc_from_timestamp(price_entry["timestamp"])
+                            )
                             price_raw = price_entry["price"]
 
                             # Create hour key
@@ -200,12 +224,21 @@ class EstonianElectricityPriceSensor(SensorEntity):
                                     "price": price_converted,
                                 })
 
+                        # A lone early hour is not tomorrow's prices yet
+                        if len(prices_tomorrow) < MIN_HOURS_FOR_FULL_DAY:
+                            prices_tomorrow = []
+                            self._raw_tomorrow = []
+
                         # Set current price
                         if current_price_raw is None and ee_prices:
                             current_price_raw = ee_prices[-1]["price"]
                             _LOGGER.warning("Using latest available price as fallback")
 
-                        self._state = self._convert_price(current_price_raw) if current_price_raw else None
+                        self._state = (
+                            self._convert_price(current_price_raw)
+                            if current_price_raw is not None
+                            else None
+                        )
                         self._available = True
 
                         # Calculate statistics

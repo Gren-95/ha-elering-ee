@@ -7,33 +7,31 @@
   [![GitHub Release](https://img.shields.io/github/release/Gren-95/ha-elering-ee.svg)](https://github.com/Gren-95/ha-elering-ee/releases)
   [![License](https://img.shields.io/github/license/Gren-95/ha-elering-ee.svg)](LICENSE)
 
-  A comprehensive Home Assistant integration for Estonian electricity prices using real-time data from the Elering API (Nord Pool spot prices).
+  Estonian electricity prices in Home Assistant: Nord Pool spot prices from Elering's public API, with VAT and your network fees added.
 </div>
+
+<p align="center">
+  <img src="docs/dashboard.png" alt="Home Assistant dashboard with the current price, today's statistics and an hour-by-hour price chart" width="800"/>
+</p>
 
 ---
 
 ## Features
 
-### Core Functionality
-- ⚡ **Real-time pricing** - Current electricity price updated hourly
-- 📊 **Smart pricing in cents/kWh** - Easy-to-understand pricing (configurable)
-- 💶 **Automatic VAT calculation** - Estonia's 22% VAT included by default
-- 💰 **Additional costs support** - Add network fees or other charges
-- 🔮 **Tomorrow's prices** - Next day prices (available after 1 PM)
+- The current price, updated every hour, in c/kWh or EUR/kWh
+- Estonian VAT (22%) added by default, plus any network fees you enter
+- All of today's hourly prices, and tomorrow's once they are published (around 14:00)
+- No API key: Elering's price API is public
+- Set up and changed from the Home Assistant UI
 
-### Intelligent Attributes
-- 🎯 **is_cheap** - Boolean indicating if current price is below daily average
-- 📈 **price_percent_to_average** - How current price compares to daily average (%)
-- 🏆 **price_rank** - Current price ranking (e.g., "5/24" = 5th cheapest hour)
-- 📊 **Statistics** - Min, max, average, median prices for today and tomorrow
-- 🌙 **Peak/off-peak averages** - Separate averages for peak (7-23) and off-peak hours
+### Attributes
 
-### Smart Features
-- 🚫 **No API key required** - Uses public Elering API
-- 🔄 **Auto-updates** - Refreshes every hour
-- 💾 **Database optimized** - Large price arrays excluded from recorder
-- ⚙️ **UI configuration** - Easy setup through Home Assistant UI
-- 🎛️ **Configurable precision** - Choose decimal places (0-6)
+- `is_cheap`: whether the current price is below today's average
+- `price_percent_to_average`: the current price as a percentage of today's average
+- `price_rank`: where the current hour ranks today, e.g. `5/24` is the fifth cheapest
+- `min`, `max`, `average`, `median`: today's statistics, and the same for tomorrow
+- `peak_average`, `off_peak_average`: averages for 07:00-23:00 and the rest of the day
+- The hourly price lists are kept out of the recorder database, so they don't bloat it
 
 ## Installation
 
@@ -58,7 +56,7 @@
 
 4. Search for "Elering Estonia" and configure:
    - **VAT rate**: 0.22 (22%, default for Estonia)
-   - **Price in cents**: Yes (shows c/kWh) or No (shows €/MWh)
+   - **Price in cents**: Yes (shows c/kWh) or No (shows EUR/kWh, which the Energy dashboard needs)
    - **Additional costs**: Any fixed costs in EUR/MWh (e.g., network fees)
    - **Precision**: Number of decimal places (default: 2)
 
@@ -80,7 +78,7 @@ Then configure via UI as described above.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **VAT** | 0.22 (22%) | Estonia's VAT rate on electricity |
-| **Price in cents** | Yes | Show price as c/kWh (easier to read) vs €/MWh |
+| **Price in cents** | Yes | Show price as c/kWh (easier to read) vs EUR/kWh (Energy dashboard) |
 | **Additional costs** | 0.0 | Add network fees or other charges (in EUR/MWh) |
 | **Precision** | 2 | Decimal places to display |
 
@@ -96,15 +94,16 @@ Then configure via UI as described above.
 - VAT: 0.0
 - Price in cents: No
 - Additional costs: 0.0
-- Result: Shows raw spot price in EUR/MWh
+- Precision: 4
+- Result: Shows the spot price in EUR/kWh, ready for the Energy dashboard
 
 ## Usage
 
 ### Sensor Entity
 
-After setup, you'll have: `sensor.elering_ee_electricity_price`
+After setup, you'll have: `sensor.electricity_price`
 
-**State**: Current electricity price (in c/kWh or €/MWh based on config)
+**State**: Current electricity price (in c/kWh or EUR/kWh based on config)
 
 ### Available Attributes
 
@@ -149,160 +148,12 @@ currency: "EUR"
 last_updated: "2024-01-15T14:30:00"
 ```
 
-## Automation Examples
+## Examples
 
-### Notify When Electricity is Cheap
+Automations and dashboard cards are in [EXAMPLES.md](EXAMPLES.md):
 
-```yaml
-automation:
-  - alias: "Cheap Electricity Alert"
-    trigger:
-      - platform: state
-        entity_id: sensor.elering_ee_electricity_price
-        attribute: is_cheap
-        to: true
-    action:
-      - service: notify.notify
-        data:
-          title: "⚡ Electricity is Cheap!"
-          message: >
-            Current price: {{ states('sensor.elering_ee_electricity_price') }} c/kWh
-            ({{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}% of average)
-```
-
-### Run Dishwasher During Cheapest Hours
-
-```yaml
-automation:
-  - alias: "Run Dishwasher When Cheap"
-    trigger:
-      - platform: time_pattern
-        hours: "*"
-    condition:
-      - condition: template
-        value_template: >
-          {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank').split('/')[0]|int <= 5 }}
-    action:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.dishwasher
-```
-
-### Charge EV During Cheapest Night Hours
-
-```yaml
-automation:
-  - alias: "Charge EV During Cheap Night Hours"
-    trigger:
-      - platform: time_pattern
-        hours: "*"
-    condition:
-      - condition: time
-        after: "22:00"
-        before: "06:00"
-      - condition: numeric_state
-        entity_id: sensor.elering_ee_electricity_price
-        below: 10  # Below 10 c/kWh
-    action:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.ev_charger
-```
-
-### Daily Price Summary Notification
-
-```yaml
-automation:
-  - alias: "Daily Electricity Price Summary"
-    trigger:
-      - platform: time
-        at: "07:00"
-    action:
-      - service: notify.notify
-        data:
-          title: "📊 Today's Electricity Prices"
-          message: >
-            Average: {{ state_attr('sensor.elering_ee_electricity_price', 'average') }} c/kWh
-            Min: {{ state_attr('sensor.elering_ee_electricity_price', 'min') }} c/kWh
-            Max: {{ state_attr('sensor.elering_ee_electricity_price', 'max') }} c/kWh
-            Peak hours avg: {{ state_attr('sensor.elering_ee_electricity_price', 'peak_average') }} c/kWh
-```
-
-## Lovelace Cards
-
-### Simple Entity Card
-
-```yaml
-type: entity
-entity: sensor.elering_ee_electricity_price
-name: Electricity Price
-icon: mdi:flash
-```
-
-### Detailed Statistics Card
-
-```yaml
-type: entities
-title: ⚡ Electricity Prices
-entities:
-  - entity: sensor.elering_ee_electricity_price
-    name: Current Price
-    icon: mdi:flash
-  - type: divider
-  - type: attribute
-    entity: sensor.elering_ee_electricity_price
-    attribute: is_cheap
-    name: Is Cheap?
-    icon: mdi:tag
-  - type: attribute
-    entity: sensor.elering_ee_electricity_price
-    attribute: price_rank
-    name: Price Rank
-    icon: mdi:podium
-  - type: divider
-  - type: attribute
-    entity: sensor.elering_ee_electricity_price
-    attribute: average
-    name: Average Today
-    suffix: c/kWh
-  - type: attribute
-    entity: sensor.elering_ee_electricity_price
-    attribute: min
-    name: Min Today
-    suffix: c/kWh
-  - type: attribute
-    entity: sensor.elering_ee_electricity_price
-    attribute: max
-    name: Max Today
-    suffix: c/kWh
-```
-
-### Apex Charts Card (requires custom card)
-
-```yaml
-type: custom:apexcharts-card
-header:
-  title: Electricity Prices
-  show: true
-graph_span: 2d
-span:
-  start: day
-series:
-  - entity: sensor.elering_ee_electricity_price
-    name: Today
-    data_generator: |
-      return entity.attributes.prices_today.map((item) => {
-        return [new Date().setHours(item.time.split(':')[0], 0, 0, 0), item.price];
-      });
-  - entity: sensor.elering_ee_electricity_price
-    name: Tomorrow
-    data_generator: |
-      return entity.attributes.prices_tomorrow?.map((item) => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return [tomorrow.setHours(item.time.split(':')[0], 0, 0, 0), item.price];
-      }) || [];
-```
+- Automations: [notify when electricity is cheap](EXAMPLES.md#notify-when-electricity-is-cheap), [run the dishwasher in the cheapest hours](EXAMPLES.md#run-dishwasher-during-cheapest-hours), [charge an EV in the cheapest night hours](EXAMPLES.md#charge-ev-during-cheapest-night-hours), [a daily price summary](EXAMPLES.md#daily-price-summary-notification)
+- Dashboard cards: [a simple entity card](EXAMPLES.md#simple-entity-card), [a statistics card](EXAMPLES.md#detailed-statistics-card), [an hourly price chart](EXAMPLES.md#apex-charts-card-requires-custom-card) (needs the ApexCharts card)
 
 ## Technical Details
 
@@ -318,9 +169,10 @@ series:
 Final Price = (Spot Price × (1 + VAT)) + Additional Costs
 ```
 
-If "Price in cents" is enabled:
+Then it is converted to the configured unit:
 ```
-Final Price (c/kWh) = Final Price (EUR/MWh) / 10
+Final Price (EUR/kWh) = Final Price (EUR/MWh) / 1000
+Final Price (c/kWh)   = Final Price (EUR/MWh) / 10
 ```
 
 Example:
@@ -343,10 +195,14 @@ Large price arrays (`prices_today`, `prices_tomorrow`, `raw_today`, `raw_tomorro
 - Tomorrow's prices are published around 13:00-14:00 CET
 - Before that time, `tomorrow_valid` will be `false`
 
+### Using the Energy dashboard
+- The Energy dashboard only accepts a price in EUR/kWh: turn **Price in cents** off in the integration's options
+
 ### Incorrect prices
 - Verify VAT rate (Estonia: 22%)
 - Check additional costs configuration
-- Ensure correct unit selection (c/kWh vs EUR/MWh)
+- Ensure correct unit selection (c/kWh vs EUR/kWh)
+- With EUR/kWh, use a precision of 4 or more: at 2 decimals every price rounds to whole cents
 
 ## Support & Contributing
 
@@ -357,7 +213,3 @@ Large price arrays (`prices_today`, `prices_tomorrow`, `raw_today`, `raw_tomorro
 ## Credits
 
 Data provided by Elering (Estonian TSO) via their public API.
-
----
-
-**Made with ⚡ in Estonia**
