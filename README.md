@@ -35,32 +35,29 @@
 
 ## Installation
 
-### Option 1: Manual Installation
+### Option 1: HACS
 
-1. Copy the `elering_ee` folder to your `config/custom_components/` directory:
-   ```
-   config/
-   └── custom_components/
-       └── elering_ee/
-           ├── __init__.py
-           ├── config_flow.py
-           ├── const.py
-           ├── manifest.json
-           ├── sensor.py
-           └── README.md
-   ```
+1. In HACS, open the menu (top right) and choose **Custom repositories**
+2. Add `https://github.com/Gren-95/ha-elering-ee` with the type **Integration**
+3. Find **Elering Estonia Electricity Price** in HACS and download it
 
-2. Restart Home Assistant
+### Option 2: Manual installation
 
-3. Go to **Settings** → **Devices & Services** → **Add Integration**
+Copy `custom_components/elering_ee` from this repository into your Home Assistant `config/custom_components/` directory, so you end up with `config/custom_components/elering_ee/manifest.json`
 
-4. Search for "Elering Estonia" and configure:
+### Set up
+
+1. Restart Home Assistant
+
+2. Go to **Settings** → **Devices & Services** → **Add Integration**
+
+3. Search for "Elering Estonia" and configure:
    - **VAT rate**: 0.22 (22%, default for Estonia)
    - **Price in cents**: Yes (shows c/kWh) or No (shows EUR/kWh, which the Energy dashboard needs)
    - **Additional costs**: Any fixed costs in EUR/MWh (e.g., network fees)
    - **Precision**: Number of decimal places (default: 2)
 
-### Option 2: YAML Configuration (Legacy)
+### YAML configuration (legacy)
 
 You can still use YAML, but UI configuration is recommended:
 

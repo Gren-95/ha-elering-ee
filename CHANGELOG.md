@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-10-28
+
+### Changed
+- The integration now lives in `custom_components/elering_ee/`, the standard layout, instead of the repository root. Nothing changes for installed copies: HACS installs to the same place
+- Validation runs Home Assistant's hassfest instead of a hand-written check, plus a weekly scheduled run
+- README: HACS install steps, and manual install from `custom_components/elering_ee`
+- `codeowners` set in the manifest
+
 ## [2.1.0] - 2026-10-28
 
 ### Fixed

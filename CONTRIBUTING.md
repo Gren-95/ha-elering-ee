@@ -26,7 +26,7 @@ cd ha-elering-ee
 pip install homeassistant
 
 # Create a symbolic link to your Home Assistant config
-ln -s $(pwd) ~/.homeassistant/custom_components/elering_ee
+ln -s $(pwd)/custom_components/elering_ee ~/.homeassistant/custom_components/elering_ee
 ```
 
 #### Making Changes
