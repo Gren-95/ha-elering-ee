@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changing options more than once set the sensor up twice ("does not generate unique IDs"): reloads now go through Home Assistant
 - README and example cards used `sensor.elering_ee_electricity_price`; the entity is `sensor.electricity_price`
 - The options dialog failed with a 500 error on current Home Assistant releases (the options flow assigned `config_entry`, which Home Assistant now provides)
-
 - HACS validation: brand icons are now provided in `brand/`
 
 ### Changed
