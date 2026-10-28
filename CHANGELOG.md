@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README and example cards used `sensor.elering_ee_electricity_price`; the entity is `sensor.electricity_price`
 - The options dialog failed with a 500 error on current Home Assistant releases (the options flow assigned `config_entry`, which Home Assistant now provides)
 
+- HACS validation: brand icons are now provided in `brand/`
+
 ### Changed
 - With "Price in cents" on (the default), the sensor reports c/kWh. Turn it off to keep using the sensor in the Energy dashboard
 - Requires Home Assistant 2024.11 or newer, for the options flow fix
