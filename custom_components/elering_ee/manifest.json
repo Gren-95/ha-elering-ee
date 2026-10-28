@@ -9,5 +9,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Gren-95/ha-elering-ee/issues",
   "requirements": [],
-  "version": "2.1.1"
+  "version": "2.1.2"
 }
