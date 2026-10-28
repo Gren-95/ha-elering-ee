@@ -14,7 +14,7 @@ icon: mdi:flash
 # Detailed Statistics Card
 # ============================================
 type: entities
-title: ⚡ Electricity Prices
+title: Electricity prices
 entities:
   - entity: sensor.electricity_price
     name: Current Price
@@ -90,13 +90,13 @@ segments:
 # ============================================
 type: markdown
 content: |
-  ## ⚡ Electricity Price Summary
+  ## Electricity price summary
 
   **Current Price:** {{ states('sensor.electricity_price') }} c/kWh
   {% if state_attr('sensor.electricity_price', 'is_cheap') %}
-  🟢 **Status:** CHEAP - Good time to use electricity!
+  **Status:** cheap, a good time to run appliances
   {% else %}
-  🔴 **Status:** EXPENSIVE - Consider waiting
+  **Status:** expensive, consider waiting
   {% endif %}
 
   **Price Rank:** {{ state_attr('sensor.electricity_price', 'price_rank') }}
@@ -121,7 +121,7 @@ conditions:
 card:
   type: markdown
   content: |
-    ⚠️ **Electricity is expensive right now!**
+    **Electricity is expensive right now**
 
     Current: {{ states('sensor.electricity_price') }} c/kWh
     ({{ state_attr('sensor.electricity_price', 'price_percent_to_average') }}% of average)

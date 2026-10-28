@@ -7,7 +7,7 @@
   [![GitHub Release](https://img.shields.io/github/release/Gren-95/ha-elering-ee.svg)](https://github.com/Gren-95/ha-elering-ee/releases)
   [![License](https://img.shields.io/github/license/Gren-95/ha-elering-ee.svg)](LICENSE)
 
-  A comprehensive Home Assistant integration for Estonian electricity prices using real-time data from the Elering API (Nord Pool spot prices).
+  Estonian electricity prices in Home Assistant: Nord Pool spot prices from Elering's public API, with VAT and your network fees added.
 </div>
 
 <p align="center">
@@ -18,26 +18,20 @@
 
 ## Features
 
-### Core Functionality
-- ⚡ **Real-time pricing** - Current electricity price updated hourly
-- 📊 **Smart pricing in cents/kWh** - Easy-to-understand pricing (configurable)
-- 💶 **Automatic VAT calculation** - Estonia's 22% VAT included by default
-- 💰 **Additional costs support** - Add network fees or other charges
-- 🔮 **Tomorrow's prices** - Next day prices (available after 1 PM)
+- The current price, updated every hour, in c/kWh or EUR/kWh
+- Estonian VAT (22%) added by default, plus any network fees you enter
+- All of today's hourly prices, and tomorrow's once they are published (around 14:00)
+- No API key: Elering's price API is public
+- Set up and changed from the Home Assistant UI
 
-### Intelligent Attributes
-- 🎯 **is_cheap** - Boolean indicating if current price is below daily average
-- 📈 **price_percent_to_average** - How current price compares to daily average (%)
-- 🏆 **price_rank** - Current price ranking (e.g., "5/24" = 5th cheapest hour)
-- 📊 **Statistics** - Min, max, average, median prices for today and tomorrow
-- 🌙 **Peak/off-peak averages** - Separate averages for peak (7-23) and off-peak hours
+### Attributes
 
-### Smart Features
-- 🚫 **No API key required** - Uses public Elering API
-- 🔄 **Auto-updates** - Refreshes every hour
-- 💾 **Database optimized** - Large price arrays excluded from recorder
-- ⚙️ **UI configuration** - Easy setup through Home Assistant UI
-- 🎛️ **Configurable precision** - Choose decimal places (0-6)
+- `is_cheap`: whether the current price is below today's average
+- `price_percent_to_average`: the current price as a percentage of today's average
+- `price_rank`: where the current hour ranks today, e.g. `5/24` is the fifth cheapest
+- `min`, `max`, `average`, `median`: today's statistics, and the same for tomorrow
+- `peak_average`, `off_peak_average`: averages for 07:00-23:00 and the rest of the day
+- The hourly price lists are kept out of the recorder database, so they don't bloat it
 
 ## Installation
 
@@ -169,7 +163,7 @@ automation:
     action:
       - service: notify.notify
         data:
-          title: "⚡ Electricity is Cheap!"
+          title: "Electricity is cheap"
           message: >
             Current price: {{ states('sensor.electricity_price') }} c/kWh
             ({{ state_attr('sensor.electricity_price', 'price_percent_to_average') }}% of average)
@@ -225,7 +219,7 @@ automation:
     action:
       - service: notify.notify
         data:
-          title: "📊 Today's Electricity Prices"
+          title: "Today's electricity prices"
           message: >
             Average: {{ state_attr('sensor.electricity_price', 'average') }} c/kWh
             Min: {{ state_attr('sensor.electricity_price', 'min') }} c/kWh
@@ -248,7 +242,7 @@ icon: mdi:flash
 
 ```yaml
 type: entities
-title: ⚡ Electricity Prices
+title: Electricity prices
 entities:
   - entity: sensor.electricity_price
     name: Current Price
@@ -367,7 +361,3 @@ Large price arrays (`prices_today`, `prices_tomorrow`, `raw_today`, `raw_tomorro
 ## Credits
 
 Data provided by Elering (Estonian TSO) via their public API.
-
----
-
-**Made with ⚡ in Estonia**
