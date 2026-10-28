@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-28
+
+### Fixed
+- Prices covered only the last ~12 hours: the API is now asked for the whole of today and tomorrow, so daily statistics, `price_rank` and tomorrow's prices are complete. The 400 errors from 2.0.3 came from an unencoded `+00:00` offset; times are now sent as UTC with a `Z` suffix
+- Tomorrow's prices only count once the day is (nearly) complete, so the early first hour Nord Pool publishes no longer sets `tomorrow_valid`
+- The "Price in cents" option is honoured again: c/kWh when on, EUR/kWh when off
+- Home Assistant warned that a `monetary` sensor cannot use the `measurement` state class; the device class is removed
+- Hours are grouped in Home Assistant's time zone rather than the host's
+- A current price of exactly 0 is reported as 0 instead of unknown
+- README and example cards used `sensor.elering_ee_electricity_price`; the entity is `sensor.electricity_price`
+- The options dialog failed with a 500 error on current Home Assistant releases (the options flow assigned `config_entry`, which Home Assistant now provides)
+
+### Changed
+- With "Price in cents" on (the default), the sensor reports c/kWh. Turn it off to keep using the sensor in the Energy dashboard
+- Requires Home Assistant 2024.11 or newer, for the options flow fix
+
 ## [2.0.4] - 2026-02-13
 
 ### Fixed

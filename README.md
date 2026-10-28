@@ -10,6 +10,10 @@
   A comprehensive Home Assistant integration for Estonian electricity prices using real-time data from the Elering API (Nord Pool spot prices).
 </div>
 
+<p align="center">
+  <img src="docs/dashboard.png" alt="Home Assistant dashboard with the current price, today's statistics and an hour-by-hour price chart" width="800"/>
+</p>
+
 ---
 
 ## Features
@@ -58,7 +62,7 @@
 
 4. Search for "Elering Estonia" and configure:
    - **VAT rate**: 0.22 (22%, default for Estonia)
-   - **Price in cents**: Yes (shows c/kWh) or No (shows €/MWh)
+   - **Price in cents**: Yes (shows c/kWh) or No (shows EUR/kWh, which the Energy dashboard needs)
    - **Additional costs**: Any fixed costs in EUR/MWh (e.g., network fees)
    - **Precision**: Number of decimal places (default: 2)
 
@@ -80,7 +84,7 @@ Then configure via UI as described above.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **VAT** | 0.22 (22%) | Estonia's VAT rate on electricity |
-| **Price in cents** | Yes | Show price as c/kWh (easier to read) vs €/MWh |
+| **Price in cents** | Yes | Show price as c/kWh (easier to read) vs EUR/kWh (Energy dashboard) |
 | **Additional costs** | 0.0 | Add network fees or other charges (in EUR/MWh) |
 | **Precision** | 2 | Decimal places to display |
 
@@ -96,15 +100,16 @@ Then configure via UI as described above.
 - VAT: 0.0
 - Price in cents: No
 - Additional costs: 0.0
-- Result: Shows raw spot price in EUR/MWh
+- Precision: 4
+- Result: Shows the spot price in EUR/kWh, ready for the Energy dashboard
 
 ## Usage
 
 ### Sensor Entity
 
-After setup, you'll have: `sensor.elering_ee_electricity_price`
+After setup, you'll have: `sensor.electricity_price`
 
-**State**: Current electricity price (in c/kWh or €/MWh based on config)
+**State**: Current electricity price (in c/kWh or EUR/kWh based on config)
 
 ### Available Attributes
 
@@ -158,7 +163,7 @@ automation:
   - alias: "Cheap Electricity Alert"
     trigger:
       - platform: state
-        entity_id: sensor.elering_ee_electricity_price
+        entity_id: sensor.electricity_price
         attribute: is_cheap
         to: true
     action:
@@ -166,8 +171,8 @@ automation:
         data:
           title: "⚡ Electricity is Cheap!"
           message: >
-            Current price: {{ states('sensor.elering_ee_electricity_price') }} c/kWh
-            ({{ state_attr('sensor.elering_ee_electricity_price', 'price_percent_to_average') }}% of average)
+            Current price: {{ states('sensor.electricity_price') }} c/kWh
+            ({{ state_attr('sensor.electricity_price', 'price_percent_to_average') }}% of average)
 ```
 
 ### Run Dishwasher During Cheapest Hours
@@ -181,7 +186,7 @@ automation:
     condition:
       - condition: template
         value_template: >
-          {{ state_attr('sensor.elering_ee_electricity_price', 'price_rank').split('/')[0]|int <= 5 }}
+          {{ state_attr('sensor.electricity_price', 'price_rank').split('/')[0]|int <= 5 }}
     action:
       - service: switch.turn_on
         target:
@@ -201,7 +206,7 @@ automation:
         after: "22:00"
         before: "06:00"
       - condition: numeric_state
-        entity_id: sensor.elering_ee_electricity_price
+        entity_id: sensor.electricity_price
         below: 10  # Below 10 c/kWh
     action:
       - service: switch.turn_on
@@ -222,10 +227,10 @@ automation:
         data:
           title: "📊 Today's Electricity Prices"
           message: >
-            Average: {{ state_attr('sensor.elering_ee_electricity_price', 'average') }} c/kWh
-            Min: {{ state_attr('sensor.elering_ee_electricity_price', 'min') }} c/kWh
-            Max: {{ state_attr('sensor.elering_ee_electricity_price', 'max') }} c/kWh
-            Peak hours avg: {{ state_attr('sensor.elering_ee_electricity_price', 'peak_average') }} c/kWh
+            Average: {{ state_attr('sensor.electricity_price', 'average') }} c/kWh
+            Min: {{ state_attr('sensor.electricity_price', 'min') }} c/kWh
+            Max: {{ state_attr('sensor.electricity_price', 'max') }} c/kWh
+            Peak hours avg: {{ state_attr('sensor.electricity_price', 'peak_average') }} c/kWh
 ```
 
 ## Lovelace Cards
@@ -234,7 +239,7 @@ automation:
 
 ```yaml
 type: entity
-entity: sensor.elering_ee_electricity_price
+entity: sensor.electricity_price
 name: Electricity Price
 icon: mdi:flash
 ```
@@ -245,33 +250,33 @@ icon: mdi:flash
 type: entities
 title: ⚡ Electricity Prices
 entities:
-  - entity: sensor.elering_ee_electricity_price
+  - entity: sensor.electricity_price
     name: Current Price
     icon: mdi:flash
   - type: divider
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: is_cheap
     name: Is Cheap?
     icon: mdi:tag
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: price_rank
     name: Price Rank
     icon: mdi:podium
   - type: divider
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: average
     name: Average Today
     suffix: c/kWh
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: min
     name: Min Today
     suffix: c/kWh
   - type: attribute
-    entity: sensor.elering_ee_electricity_price
+    entity: sensor.electricity_price
     attribute: max
     name: Max Today
     suffix: c/kWh
@@ -288,13 +293,13 @@ graph_span: 2d
 span:
   start: day
 series:
-  - entity: sensor.elering_ee_electricity_price
+  - entity: sensor.electricity_price
     name: Today
     data_generator: |
       return entity.attributes.prices_today.map((item) => {
         return [new Date().setHours(item.time.split(':')[0], 0, 0, 0), item.price];
       });
-  - entity: sensor.elering_ee_electricity_price
+  - entity: sensor.electricity_price
     name: Tomorrow
     data_generator: |
       return entity.attributes.prices_tomorrow?.map((item) => {
@@ -318,9 +323,10 @@ series:
 Final Price = (Spot Price × (1 + VAT)) + Additional Costs
 ```
 
-If "Price in cents" is enabled:
+Then it is converted to the configured unit:
 ```
-Final Price (c/kWh) = Final Price (EUR/MWh) / 10
+Final Price (EUR/kWh) = Final Price (EUR/MWh) / 1000
+Final Price (c/kWh)   = Final Price (EUR/MWh) / 10
 ```
 
 Example:
@@ -343,10 +349,14 @@ Large price arrays (`prices_today`, `prices_tomorrow`, `raw_today`, `raw_tomorro
 - Tomorrow's prices are published around 13:00-14:00 CET
 - Before that time, `tomorrow_valid` will be `false`
 
+### Using the Energy dashboard
+- The Energy dashboard only accepts a price in EUR/kWh: turn **Price in cents** off in the integration's options
+
 ### Incorrect prices
 - Verify VAT rate (Estonia: 22%)
 - Check additional costs configuration
-- Ensure correct unit selection (c/kWh vs EUR/MWh)
+- Ensure correct unit selection (c/kWh vs EUR/kWh)
+- With EUR/kWh, use a precision of 4 or more: at 2 decimals every price rounds to whole cents
 
 ## Support & Contributing
 

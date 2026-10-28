@@ -74,15 +74,15 @@ class EleringEstoniaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> EleringEstoniaOptionsFlow:
         """Get the options flow for this handler."""
-        return EleringEstoniaOptionsFlow(config_entry)
+        return EleringEstoniaOptionsFlow()
 
 
 class EleringEstoniaOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Elering Estonia."""
+    """Handle options flow for Elering Estonia.
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
+    Home Assistant provides self.config_entry; assigning it is an error on
+    current releases and broke the options dialog.
+    """
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
