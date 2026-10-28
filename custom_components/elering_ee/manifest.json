@@ -1,11 +1,13 @@
 {
   "domain": "elering_ee",
   "name": "Elering Estonia Electricity Price",
-  "codeowners": [],
+  "codeowners": [
+    "@Gren-95"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/Gren-95/ha-elering-ee",
-  "issue_tracker": "https://github.com/Gren-95/ha-elering-ee/issues",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Gren-95/ha-elering-ee/issues",
   "requirements": [],
-  "version": "2.1.0"
+  "version": "2.1.1"
 }
