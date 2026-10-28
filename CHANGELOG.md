@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Home Assistant warned that a `monetary` sensor cannot use the `measurement` state class; the device class is removed
 - Hours are grouped in Home Assistant's time zone rather than the host's
 - A current price of exactly 0 is reported as 0 instead of unknown
+- Changing options more than once set the sensor up twice ("does not generate unique IDs"): reloads now go through Home Assistant
 - README and example cards used `sensor.elering_ee_electricity_price`; the entity is `sensor.electricity_price`
 - The options dialog failed with a 500 error on current Home Assistant releases (the options flow assigned `config_entry`, which Home Assistant now provides)
 
