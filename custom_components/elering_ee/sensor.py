@@ -1,13 +1,13 @@
 """Sensor platform for Elering Estonia electricity prices."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 import logging
 from typing import Any
 from statistics import median
 
 import aiohttp
-import async_timeout
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -136,7 +136,7 @@ class EstonianElectricityPriceSensor(SensorEntity):
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 async with aiohttp.ClientSession() as session:
                     # Get current time for filtering, in Home Assistant's time zone
                     current_time = dt_util.now()

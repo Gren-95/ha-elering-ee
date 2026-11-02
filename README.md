@@ -57,17 +57,6 @@ Copy `custom_components/elering_ee` from this repository into your Home Assistan
    - **Additional costs**: Any fixed costs in EUR/MWh (e.g., network fees)
    - **Precision**: Number of decimal places (default: 2)
 
-### YAML configuration (legacy)
-
-You can still use YAML, but UI configuration is recommended:
-
-```yaml
-sensor:
-  - platform: elering_ee
-```
-
-Then configure via UI as described above.
-
 ## Configuration
 
 ### Settings Explained
