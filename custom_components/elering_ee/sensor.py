@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
 import homeassistant.util.dt as dt_util
@@ -61,7 +62,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform from a config entry."""
-    async_add_entities([EstonianElectricityPriceSensor(entry)], True)
+    async_add_entities([EstonianElectricityPriceSensor(hass, entry)], True)
 
 
 class EstonianElectricityPriceSensor(SensorEntity):
@@ -75,8 +76,9 @@ class EstonianElectricityPriceSensor(SensorEntity):
     _attr_icon = "mdi:flash"
     _unrecorded_attributes = UNRECORDED_ATTRIBUTES
 
-    def __init__(self, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_electricity_price"
 
@@ -137,116 +139,116 @@ class EstonianElectricityPriceSensor(SensorEntity):
         """Fetch new state data for the sensor."""
         try:
             async with asyncio.timeout(10):
-                async with aiohttp.ClientSession() as session:
-                    # Get current time for filtering, in Home Assistant's time zone
-                    current_time = dt_util.now()
+                session = async_get_clientsession(self.hass)
+                # Get current time for filtering, in Home Assistant's time zone
+                current_time = dt_util.now()
 
-                    # Without a range the API only returns the last ~12 hours,
-                    # so ask for the whole of today and tomorrow.
-                    start = dt_util.start_of_local_day(current_time)
-                    end = dt_util.start_of_local_day(start + timedelta(days=2, hours=1))
-                    url = (
-                        f"{ELERING_API_URL}?start={_api_time(start)}"
-                        f"&end={_api_time(end - timedelta(milliseconds=1))}"
-                    )
+                # Without a range the API only returns the last ~12 hours,
+                # so ask for the whole of today and tomorrow.
+                start = dt_util.start_of_local_day(current_time)
+                end = dt_util.start_of_local_day(start + timedelta(days=2, hours=1))
+                url = (
+                    f"{ELERING_API_URL}?start={_api_time(start)}"
+                    f"&end={_api_time(end - timedelta(milliseconds=1))}"
+                )
 
-                    async with session.get(url) as response:
-                        if response.status != 200:
-                            _LOGGER.error(
-                                "Error fetching electricity price: HTTP %s", response.status
-                            )
-                            self._available = False
-                            return
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        _LOGGER.error(
+                            "Error fetching electricity price: HTTP %s", response.status
+                        )
+                        self._available = False
+                        return
 
-                        data = await response.json()
+                    data = await response.json()
 
-                        if not data or "data" not in data or "ee" not in data["data"]:
-                            _LOGGER.error("Invalid data structure received from API")
-                            self._available = False
-                            return
+                    if not data or "data" not in data or "ee" not in data["data"]:
+                        _LOGGER.error("Invalid data structure received from API")
+                        self._available = False
+                        return
 
-                        ee_prices = data["data"]["ee"]
+                    ee_prices = data["data"]["ee"]
 
-                        if not ee_prices:
-                            _LOGGER.error("No price data available for Estonia")
-                            self._available = False
-                            return
+                    if not ee_prices:
+                        _LOGGER.error("No price data available for Estonia")
+                        self._available = False
+                        return
 
-                        # Process prices - API returns 15-minute intervals
-                        current_price_raw = None
-                        prices_today = []
+                    # Process prices - API returns 15-minute intervals
+                    current_price_raw = None
+                    prices_today = []
+                    prices_tomorrow = []
+                    self._raw_today = []
+                    self._raw_tomorrow = []
+
+                    # Group prices by hour (API gives 15-min intervals)
+                    hourly_prices = {}
+                    tomorrow_date = current_time.date() + timedelta(days=1)
+
+                    for price_entry in ee_prices:
+                        timestamp = dt_util.as_local(
+                            dt_util.utc_from_timestamp(price_entry["timestamp"])
+                        )
+                        price_raw = price_entry["price"]
+
+                        # Create hour key
+                        hour_key = (timestamp.date(), timestamp.hour)
+
+                        if hour_key not in hourly_prices:
+                            hourly_prices[hour_key] = []
+                        hourly_prices[hour_key].append(price_raw)
+
+                    # Convert to hourly averages
+                    for (date, hour), prices in sorted(hourly_prices.items()):
+                        # Average the 15-minute intervals for this hour
+                        avg_price_raw = sum(prices) / len(prices)
+                        price_converted = self._convert_price(avg_price_raw)
+
+                        # Create timestamp for this hour
+                        hour_time = datetime(date.year, date.month, date.day, hour, 0)
+
+                        # Current hour price
+                        if date == current_time.date() and hour == current_time.hour:
+                            current_price_raw = avg_price_raw
+
+                        # Today's prices
+                        if date == current_time.date():
+                            self._raw_today.append(avg_price_raw)
+                            prices_today.append({
+                                "time": hour_time.strftime("%H:%M"),
+                                "price": price_converted,
+                            })
+                        # Tomorrow's prices
+                        elif date == tomorrow_date:
+                            self._raw_tomorrow.append(avg_price_raw)
+                            prices_tomorrow.append({
+                                "time": hour_time.strftime("%H:%M"),
+                                "price": price_converted,
+                            })
+
+                    # A lone early hour is not tomorrow's prices yet
+                    if len(prices_tomorrow) < MIN_HOURS_FOR_FULL_DAY:
                         prices_tomorrow = []
-                        self._raw_today = []
                         self._raw_tomorrow = []
 
-                        # Group prices by hour (API gives 15-min intervals)
-                        hourly_prices = {}
-                        tomorrow_date = current_time.date() + timedelta(days=1)
+                    # Set current price
+                    if current_price_raw is None and ee_prices:
+                        current_price_raw = ee_prices[-1]["price"]
+                        _LOGGER.warning("Using latest available price as fallback")
 
-                        for price_entry in ee_prices:
-                            timestamp = dt_util.as_local(
-                                dt_util.utc_from_timestamp(price_entry["timestamp"])
-                            )
-                            price_raw = price_entry["price"]
+                    self._state = (
+                        self._convert_price(current_price_raw)
+                        if current_price_raw is not None
+                        else None
+                    )
+                    self._available = True
 
-                            # Create hour key
-                            hour_key = (timestamp.date(), timestamp.hour)
-
-                            if hour_key not in hourly_prices:
-                                hourly_prices[hour_key] = []
-                            hourly_prices[hour_key].append(price_raw)
-
-                        # Convert to hourly averages
-                        for (date, hour), prices in sorted(hourly_prices.items()):
-                            # Average the 15-minute intervals for this hour
-                            avg_price_raw = sum(prices) / len(prices)
-                            price_converted = self._convert_price(avg_price_raw)
-
-                            # Create timestamp for this hour
-                            hour_time = datetime(date.year, date.month, date.day, hour, 0)
-
-                            # Current hour price
-                            if date == current_time.date() and hour == current_time.hour:
-                                current_price_raw = avg_price_raw
-
-                            # Today's prices
-                            if date == current_time.date():
-                                self._raw_today.append(avg_price_raw)
-                                prices_today.append({
-                                    "time": hour_time.strftime("%H:%M"),
-                                    "price": price_converted,
-                                })
-                            # Tomorrow's prices
-                            elif date == tomorrow_date:
-                                self._raw_tomorrow.append(avg_price_raw)
-                                prices_tomorrow.append({
-                                    "time": hour_time.strftime("%H:%M"),
-                                    "price": price_converted,
-                                })
-
-                        # A lone early hour is not tomorrow's prices yet
-                        if len(prices_tomorrow) < MIN_HOURS_FOR_FULL_DAY:
-                            prices_tomorrow = []
-                            self._raw_tomorrow = []
-
-                        # Set current price
-                        if current_price_raw is None and ee_prices:
-                            current_price_raw = ee_prices[-1]["price"]
-                            _LOGGER.warning("Using latest available price as fallback")
-
-                        self._state = (
-                            self._convert_price(current_price_raw)
-                            if current_price_raw is not None
-                            else None
-                        )
-                        self._available = True
-
-                        # Calculate statistics
-                        self._attributes = self._calculate_attributes(
-                            prices_today,
-                            prices_tomorrow,
-                            current_time,
-                        )
+                    # Calculate statistics
+                    self._attributes = self._calculate_attributes(
+                        prices_today,
+                        prices_tomorrow,
+                        current_time,
+                    )
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Error fetching electricity price: %s", err)
